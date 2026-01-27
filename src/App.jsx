@@ -3,7 +3,7 @@ import { Toaster } from 'react-hot-toast';
 import { IoAdd } from "react-icons/io5";
 
 // Components
-import Header from './components/header';
+import Header from './components/Header';
 import BalanceCard from './components/BalanceCard';
 import StatsGrid from './components/StatsGrid';
 import TransactionList from './components/TransactionList';
