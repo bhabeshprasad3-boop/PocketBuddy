@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { IoClose, IoFastFood, IoShirt, IoBus, IoGameController, IoWallet, IoCart, IoFitness, IoBook, IoReceipt, IoGift } from "react-icons/io5";
+import { IoClose, IoFastFood, IoShirt, IoBus, IoGameController, IoWallet, IoCart, IoFitness, IoBook, IoReceipt, IoGift, IoMic } from "react-icons/io5"; // 👈 Added IoMic
 import { useBudget } from '../context/BudgetContext';
-
+import { toast } from 'react-hot-toast';
 
 const categories = [
   { id: 'Food', icon: <IoFastFood />, label: 'Street Food', color: 'bg-orange-500' },
@@ -16,104 +16,97 @@ const categories = [
   { id: 'Other', icon: <IoWallet />, label: 'Other', color: 'bg-gray-500' },
 ];
 
-const AddExpenseForm = ({ isOpen, onClose }) => {
+const AddExpenseForm = ({ isOpen, onClose, isDarkMode }) => {
   const { addTransaction } = useBudget();
-  
-  // State: Sirf Amount aur Category chahiye ab
   const [amount, setAmount] = useState('');
-  const [selectedCatId, setSelectedCatId] = useState('Food'); // Default selection
+  const [selectedCatId, setSelectedCatId] = useState('Food');
+  const [isListening, setIsListening] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  // 🎤 VOICE LOGIC
+  const startListening = () => {
+    if (!('webkitSpeechRecognition' in window)) {
+      return alert("Browser not supported for Voice. Use Chrome.");
+    }
+    const recognition = new window.webkitSpeechRecognition();
+    recognition.lang = 'en-IN'; // Indian English
+    setIsListening(true);
     
-    // Validation: Sirf Amount check karo
-    if (!amount) return alert("Paisa toh daalo bhai!");
-
-    // Selected Category ka pura data dhundo (Label nikaalne ke liye)
-    const categoryObj = categories.find(c => c.id === selectedCatId);
-
-    const newTxn = {
-      id: Date.now(),
-      title: categoryObj.label, // ✨ MAGIC: Title apne aap Category ka naam ban jayega
-      amount: Number(amount),
-      category: categoryObj.id,
-      date: new Date().toISOString(),
-      type: 'expense'
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      console.log("Heard:", transcript);
+      
+      // Magic Regex to find numbers (e.g., "50 rupees")
+      const numberMatch = transcript.match(/(\d+)/);
+      if (numberMatch) {
+        setAmount(numberMatch[0]);
+        toast.success(`Heard: "₹${numberMatch[0]}"`);
+      } else {
+        toast.error("Couldn't hear an amount. Try again.");
+      }
+      setIsListening(false);
     };
 
-    addTransaction(newTxn);
-    
-    // Reset
-    setAmount('');
-    setSelectedCatId('Food'); // Reset to default
-    onClose();
+    recognition.onerror = () => {
+        setIsListening(false);
+        toast.error("Voice Error. Try again.");
+    };
+
+    recognition.start();
+  };
+
+  const theme = {
+    modal: isDarkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-100',
+    text: isDarkMode ? 'text-white' : 'text-gray-900',
+    inputBg: isDarkMode ? 'bg-neutral-800' : 'bg-gray-100',
+    inputTxt: isDarkMode ? 'text-white' : 'text-gray-900',
+    subText: isDarkMode ? 'text-neutral-500' : 'text-gray-500',
+    close: isDarkMode ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-400' : 'bg-gray-100 hover:bg-gray-200 text-gray-500',
+    unselected: isDarkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-400 hover:bg-neutral-700' : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!amount) return;
+    const cat = categories.find(c => c.id === selectedCatId);
+    addTransaction({ id: Date.now(), title: cat.label, amount: Number(amount), category: cat.id, date: new Date().toISOString() });
+    setAmount(''); setSelectedCatId('Food'); onClose();
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end md:items-center justify-center p-4">
-      
-      <div className="bg-neutral-900 w-full max-w-md rounded-3xl border border-neutral-800 shadow-2xl overflow-hidden animate-slide-up">
-        
-        {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-neutral-800">
-          <h2 className="text-xl font-bold text-white">Quick Add</h2>
-          <button onClick={onClose} className="p-2 bg-neutral-800 rounded-full hover:bg-neutral-700 text-neutral-400">
-            <IoClose size={20} />
-          </button>
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className={`w-full max-w-md rounded-3xl border shadow-2xl overflow-hidden animate-slide-up ${theme.modal}`}>
+        <div className={`flex justify-between items-center p-6 border-b ${isDarkMode?'border-neutral-800':'border-gray-100'}`}>
+          <h2 className={`text-xl font-bold ${theme.text}`}>Quick Add</h2>
+          <button onClick={onClose} className={`p-2 rounded-full ${theme.close}`}><IoClose size={20} /></button>
         </div>
-
+        
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          
-          {/* 1. AMOUNT INPUT (Sabse Bada) */}
           <div>
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-3xl font-bold text-emerald-500">₹</span>
-              <input 
-                type="number" 
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="w-full bg-neutral-800 text-white text-4xl font-black py-6 pl-12 pr-4 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500/50 text-center placeholder-neutral-700"
-                placeholder="0"
-                autoFocus
-              />
+              <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className={`w-full text-4xl font-black py-6 pl-12 pr-14 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500/50 text-center ${theme.inputBg} ${theme.inputTxt}`} placeholder="0" autoFocus/>
+              
+              {/* 🎤 MIC BUTTON */}
+              <button type="button" onClick={startListening} className={`absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full transition-all ${isListening ? 'bg-rose-500 text-white animate-pulse' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                 <IoMic size={20} />
+              </button>
             </div>
-            <p className="text-center text-xs text-neutral-500 mt-2 font-medium">Enter Amount & Pick Category</p>
+            <p className={`text-center text-xs mt-2 font-medium ${theme.subText}`}>{isListening ? "Listening... Speak amount..." : "Tap Mic & say '50 rupees'"}</p>
           </div>
-
-          {/* 2. CATEGORY GRID (Buttons) */}
+          
           <div className="grid grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
             {categories.map((cat) => (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => setSelectedCatId(cat.id)}
-                className={`flex items-center gap-3 p-4 rounded-2xl border transition-all text-left group ${
-                  selectedCatId === cat.id 
-                    ? `${cat.color} border-transparent text-white shadow-lg scale-[1.02]` 
-                    : 'bg-neutral-800 border-neutral-700 text-neutral-400 hover:bg-neutral-700'
-                }`}
-              >
-                <div className={`text-xl p-2 rounded-full ${selectedCatId === cat.id ? 'bg-white/20' : 'bg-black/20'}`}>
-                  {cat.icon}
-                </div>
-                <span className={`font-bold text-sm ${selectedCatId === cat.id ? 'text-white' : 'group-hover:text-neutral-200'}`}>
-                    {cat.label}
-                </span>
+              <button key={cat.id} type="button" onClick={() => setSelectedCatId(cat.id)} className={`flex items-center gap-3 p-4 rounded-2xl border transition-all text-left ${selectedCatId === cat.id ? `${cat.color} border-transparent text-white shadow-lg` : theme.unselected}`}>
+                <div className={`text-xl p-2 rounded-full ${selectedCatId===cat.id?'bg-white/20':'bg-black/10'}`}>{cat.icon}</div><span className="font-bold text-sm">{cat.label}</span>
               </button>
             ))}
           </div>
-
-          {/* 3. SUBMIT BUTTON */}
-          <button type="submit" className="w-full bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black py-4 rounded-2xl text-xl shadow-lg shadow-emerald-500/20 transition-transform active:scale-95">
-            DONE
-          </button>
-
+          <button type="submit" className="w-full bg-emerald-500 hover:bg-emerald-400 text-white font-black py-4 rounded-2xl text-xl shadow-lg active:scale-95">DONE</button>
         </form>
       </div>
     </div>
   );
 };
-
 export default AddExpenseForm;

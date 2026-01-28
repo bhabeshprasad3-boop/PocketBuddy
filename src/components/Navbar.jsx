@@ -1,7 +1,7 @@
 import React from 'react';
 import { IoMoon, IoSunny } from "react-icons/io5";
 
-const Header = ({ isDarkMode, toggleTheme }) => {
+const Navbar = ({ isDarkMode, toggleTheme }) => {
   // Theme Styles
   const headerBlur = isDarkMode ? 'bg-[#050505]/80' : 'bg-white/80';
   const borderColor = isDarkMode ? 'border-white/5' : 'border-gray-200';
@@ -31,4 +31,4 @@ const Header = ({ isDarkMode, toggleTheme }) => {
   );
 };
 
-export default Header;
+export default Navbar;
